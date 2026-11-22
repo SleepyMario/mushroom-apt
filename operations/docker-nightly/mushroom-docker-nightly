@@ -1,0 +1,102 @@
+#!/bin/bash
+set -euo pipefail
+export PATH=/usr/local/bin:/usr/bin:/bin
+export DOCKER_CONFIG=/home/ashwin/.docker
+export GIT_TERMINAL_PROMPT=0
+export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o StrictHostKeyChecking=yes"
+base=/home/ashwin/Builds/mushroom-nightly
+mkdir -p "$base/logs" "$base/sources"
+if [[ ${1:-} != --one ]]; then
+ exec 9>"$base/nightly.lock"
+ flock -n 9 || exit 0
+ export stamp=$(date -u +%Y%m%dT%H%M%SZ)
+ exec > >(tee -a "$base/logs/$stamp.log") 2>&1
+fi
+: "${stamp:?run through the main runner}"
+log() { printf '[%s] %s\n' "$(date -Is)" "$*"; }
+check_space() { local free; free=$(df --output=avail -B1 "$base" | tail -1); (( free > 3221225472 )) || { log 'FAIL: less than 3 GiB free; no cleanup performed'; return 1; }; }
+sync_source() {
+ local name=$1 url=$2 path="$base/sources/$1"
+ if [[ ! -d "$path/.git" ]]; then git clone --depth=1 "$url" "$path"; fi
+ [[ -z $(git -C "$path" status --porcelain) ]] || { log "FAIL dirty checkout: $name"; return 1; }
+ git -C "$path" fetch --depth=1 origin
+ git -C "$path" merge --ff-only FETCH_HEAD
+}
+smoke_wsm() {
+ local image=$1 id ok=0
+ id=$(docker run --detach --rm --network none --tmpfs /data:rw,mode=1777 "$image" web --host 0.0.0.0 --port 8787 --data-dir /data)
+ for attempt in {1..60}; do
+  if docker exec "$id" node -e 'fetch("http://127.0.0.1:8787/api/health").then(async r=>{const b=await r.json();if(!r.ok||b.ok!==true||b.service!=="whacksmacker-web")process.exit(1)}).catch(()=>process.exit(1))' >/dev/null 2>&1; then ok=1; break; fi
+  sleep 1
+ done
+ if (( ok == 0 )); then docker logs --tail 50 "$id" || true; fi
+ docker rm -f "$id" >/dev/null
+ (( ok == 1 ))
+}
+publish() {
+ local image=$1 revision=$2 tag="nightly-$stamp-${2:0:12}" output digest remote
+ docker run --rm --network none "$image" --help >/dev/null
+ if [[ "$image" == sleepiestmario/whacksmacker:* ]]; then smoke_wsm "$image"; fi
+ docker tag "$image" "$image-$stamp-${revision:0:12}"
+ output=$(docker push "$image-$stamp-${revision:0:12}")
+ printf '%s\n' "$output"
+ digest=$(printf '%s\n' "$output" | sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' | tail -1)
+ [[ -n "$digest" ]]
+ remote=$(docker buildx imagetools inspect "$image-$stamp-${revision:0:12}" --format '{{json .Manifest.Digest}}' | tr -d '"')
+ [[ "$remote" == "$digest" ]]
+ docker push "$image"
+ remote=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest.Digest}}' | tr -d '"')
+ [[ "$remote" == "$digest" ]]
+ log "PUBLISHED $image digest=$digest source=$revision dated=$tag"
+}
+weightrail() {
+ check_space
+ sync_source weightrail https://github.com/SleepyMario/weightrail.git
+ local p="$base/sources/weightrail" rev
+ rev=$(git -C "$p" rev-parse HEAD)
+ docker build --pull --build-arg VCS_REF="$rev" --build-arg WEIGHTRAIL_VERSION="nightly-$stamp" -t sleepiestmario/weightrail:nightly "$p"
+ docker run --rm --network none --entrypoint sh sleepiestmario/weightrail:nightly -c 'weightrail --db-path /tmp/nightly-smoke.sqlite 75 --systolic 120 --diastolic 80 --resting-heart-rate 60 && weightrail --db-path /tmp/nightly-smoke.sqlite --stats'
+ publish sleepiestmario/weightrail:nightly "$rev"
+}
+streamchat() {
+ check_space
+ sync_source streamchat https://github.com/SleepyMario/streamchat.git
+ local p="$base/sources/streamchat" rev target
+ rev=$(git -C "$p" rev-parse HEAD)
+ for target in cli server; do
+  check_space
+  docker build --pull --target "$target" --build-arg VERSION="nightly-$stamp-${rev:0:12}" --label "org.opencontainers.image.revision=$rev" -t "sleepiestmario/streamchat-$target:nightly" "$p"
+  publish "sleepiestmario/streamchat-$target:nightly" "$rev"
+ done
+}
+whacksmacker() {
+ check_space
+ sync_source whacksmacker https://github.com/SleepyMario/WhackSmacker.git
+ local repo p="$base/sources/whacksmacker" rev
+ for repo in dutch-curriculum vietnamese-curriculum japanese-curriculum korean-curriculum linguistic-terminology language-curriculum-specialized; do
+  sync_source "$repo" "git@github.com:SleepyMario/$repo.git"
+ done
+ rev=$(git -C "$p" rev-parse HEAD)
+ cd "$p"
+ ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci
+ npm run build
+ npm run test:docker
+ check_space
+ context=$(mktemp -d "$base/context.XXXXXXXX")
+ trap '[[ -z ${context:-} ]] || rm -rf -- "$context"' EXIT
+ bash scripts/prepare-docker-context.sh "$context"
+ docker build --pull --label "org.opencontainers.image.revision=$rev" --label "org.opencontainers.image.version=nightly-$stamp" -f "$context/whacksmacker/Dockerfile" -t sleepiestmario/whacksmacker:nightly "$context"
+ rm -rf -- "$context"
+ context=
+ publish sleepiestmario/whacksmacker:nightly "$rev"
+}
+if [[ ${1:-} == --one ]]; then
+ case ${2:-} in weightrail|streamchat|whacksmacker) "$2"; exit 0;; *) exit 2;; esac
+fi
+failed=0
+for project in weightrail streamchat whacksmacker; do
+ log "START $project"
+ # A separate process preserves errexit through every build/verification step.
+ if bash "$0" --one "$project"; then log "PASS $project"; else log "FAIL $project"; failed=1; fi
+done
+exit "$failed"

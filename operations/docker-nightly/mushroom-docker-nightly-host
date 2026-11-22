@@ -1,0 +1,32 @@
+#!/usr/bin/python3
+"""Start the designated Linux builder and request one serialized nightly job."""
+import json,subprocess,time
+
+def run(*args):
+    return subprocess.run(args,check=True,text=True,capture_output=True).stdout
+
+status=run('qm','status','101')
+if 'stopped' in status:
+    print(run('qm','start','101'),flush=True)
+for attempt in range(90):
+    try:
+        run('qm','agent','101','ping')
+        break
+    except subprocess.CalledProcessError:
+        time.sleep(2)
+else:
+    raise SystemExit('VM101 guest agent unavailable after startup wait')
+result=json.loads(run('qm','guest','exec','101','--','systemctl','start','--no-block','mushroom-docker-nightly.service'))
+if result.get('exitcode') != 0:
+    raise SystemExit(str(result))
+time.sleep(3)
+for attempt in range(1440):
+    result=json.loads(run('qm','guest','exec','101','--','systemctl','show','mushroom-docker-nightly.service','-p','ActiveState','-p','Result','-p','ExecMainStatus'))
+    if result.get('exitcode') != 0:
+        raise SystemExit(str(result))
+    values=dict(line.split('=',1) for line in result.get('out-data','').splitlines() if '=' in line)
+    if values.get('ActiveState') not in ('active','activating','deactivating'):
+        print(values,flush=True)
+        raise SystemExit(0 if values.get('Result')=='success' and values.get('ExecMainStatus')=='0' else 1)
+    time.sleep(30)
+raise SystemExit('Timed out observing VM101 build; inspect guest service before taking action')

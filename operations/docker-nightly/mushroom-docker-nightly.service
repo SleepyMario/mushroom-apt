@@ -1,0 +1,15 @@
+[Unit]
+Description=Mushroom nightly Docker builds and verified publication
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+User=ashwin
+Group=ashwin
+SupplementaryGroups=docker
+ExecStart=/usr/local/bin/mushroom-docker-nightly
+TimeoutStartSec=12h
+Nice=19
+IOSchedulingClass=idle
+Environment=GOMAXPROCS=2

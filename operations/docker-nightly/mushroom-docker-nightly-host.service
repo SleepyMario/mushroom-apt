@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Mushroom Docker nightly sequence on Linux packaging VM101
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mushroom-docker-nightly-host
+TimeoutStartSec=13h
+Nice=19
