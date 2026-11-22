@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily Kylin Client update check
+[Timer]
+OnCalendar=daily
+OnBootSec=15min
+RandomizedDelaySec=15min
+Persistent=true
+[Install]
+WantedBy=timers.target

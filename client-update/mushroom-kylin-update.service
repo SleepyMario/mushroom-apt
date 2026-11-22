@@ -1,0 +1,9 @@
+[Unit]
+Description=Update Kylin Client from signed Mushroom APT packages
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mushroom-kylin-update
+Nice=19
+IOSchedulingClass=idle

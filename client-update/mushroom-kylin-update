@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+# Only refresh Mushroom metadata; do not change the machine's Ubuntu update policy.
+exec 9>/run/lock/mushroom-kylin-update.lock
+flock -n 9 || exit 0
+apt-get -o DPkg::Lock::Timeout=300 -o Dir::Etc::sourcelist=sources.list.d/mushroom.sources -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 update
+DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 -y --only-upgrade --no-remove install kylin-client
