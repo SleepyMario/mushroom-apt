@@ -34,7 +34,7 @@ Section: net
 Priority: optional
 Architecture: all
 Maintainer: SleepyMario <admin@sleepymario.com>
-Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1
+Depends: openssh-client, python3 (>= 3.11), python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1
 Homepage: https://www.qylyn.com
 Description: Desktop client for a central Qylyn service
  GTK and WebKitGTK client with themes, zoom, and shared conversations.

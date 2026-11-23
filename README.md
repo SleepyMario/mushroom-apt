@@ -70,3 +70,11 @@ The signing directory must remain outside the served tree, root-only. The initia
 - ThinkPad connection check returns HTTP 401 with both the preserved previous client and the new client. Authentication and fresh graphical launch remain unverified; no credentials were changed.
 - Legacy package SHA256: `a7edaced9ac88f97321bcdf0b4467ca7b0ab2eba1eef3748f791a368ae1d1f46`.
 - Canonical package SHA256: `d38bf945586d9061c947de60eea8fefff1ae44533563ae0b8adb7662683e8eb8`.
+
+## LAN-first client update: 2026-11-23
+
+- Client version: `0.1.0+git20261123.1.8ec2c53-1`; generic source commit `8ec2c53`.
+- Built on VM 101 with Ubuntu 26.04; all 32 client tests passed there and on Gentoo.
+- Adds `kylin-client-tunnel` and the OpenSSH runtime dependency. LAN-first route selection and WireGuard fallback use the same implementation on both distributions.
+- Private endpoints and SSH trust settings belong in local `tunnel.json`; no addresses, keys, tokens or records are bundled. Installing the package does not enable or reconfigure a tunnel automatically.
+- kh's existing user tunnel was migrated separately and authenticated service reachability verified over LAN. Live WireGuard fallback was unavailable during validation; fallback ordering and reconnect behavior passed automated tests.
