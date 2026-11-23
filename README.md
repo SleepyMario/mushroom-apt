@@ -56,3 +56,11 @@ The signing directory must remain outside the served tree, root-only. The initia
 - Container digest: `sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db`
 - Package SHA256: `d36cf41d263a136acc94e35d304cd9c14f64ea5cb6b6365a61502ba135d74ea8`
 - Verified signed APT installation on ThinkPad Ubuntu 26.04, client service reachability, successful updater service, active daily timer and unchanged configuration hash. Existing app and private tunnel stayed running. A fresh graphical launch of the packaged version remains a user-side verification step.
+
+## LAN-first client update: 2026-11-23
+
+- Client version: `0.1.0+git20261123.1.8ec2c53-1`; generic source commit `8ec2c53`.
+- Built on VM 101 with Ubuntu 26.04; all 32 client tests passed there and on Gentoo.
+- Adds `kylin-client-tunnel` and the OpenSSH runtime dependency. LAN-first route selection and WireGuard fallback use the same implementation on both distributions.
+- Private endpoints and SSH trust settings belong in local `tunnel.json`; no addresses, keys, tokens or records are bundled. Installing the package does not enable or reconfigure a tunnel automatically.
+- kh's existing user tunnel was migrated separately and authenticated service reachability verified over LAN. Live WireGuard fallback was unavailable during validation; fallback ordering and reconnect behavior passed automated tests.
