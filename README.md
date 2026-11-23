@@ -63,13 +63,13 @@ The signing directory must remain outside the served tree, root-only. The initia
 
 ## Qylyn rename build: 2026-11-23
 
-- Version: `0.1.0+git20261123.07bce54-1`; source commit `07bce54459ecaca6c153fe3cf2c195cbe8b29a86`.
+- Version: `0.1.0+git20261123.07bce54-2`; source commit `07bce54459ecaca6c153fe3cf2c195cbe8b29a86`.
 - Both packages built on VM 101 using existing Ubuntu 26.04 image `mushroom/desktop-test@sha256:ea19d9be404c4f8472a308af2972624b6aba2e46b49632b401728adbb890f8e1`.
 - All 32 client tests passed. Clean-container installation was blocked by Ubuntu mirror connectivity and an unavailable WebKit dependency in that image.
 - Actual ThinkPad installation succeeded with its existing dependencies; configuration and connection-profile hashes unchanged. Both command families remain available.
 - ThinkPad connection check returns HTTP 401 with both the preserved previous client and the new client. Authentication and fresh graphical launch remain unverified; no credentials were changed.
-- Legacy package SHA256: `a7edaced9ac88f97321bcdf0b4467ca7b0ab2eba1eef3748f791a368ae1d1f46`.
-- Canonical package SHA256: `d38bf945586d9061c947de60eea8fefff1ae44533563ae0b8adb7662683e8eb8`.
+- Legacy package SHA256: `d7befdba870e68c98905c347a0df45f531e9a5146a3cd38b5cfdfb113c607383`.
+- Canonical package SHA256: `92cfc2b473101a24b5f47a8ee0463c2137bb0fdf11e8ab2532fa647a55dc3532`.
 
 ## LAN-first client update: 2026-11-23
 
@@ -78,3 +78,5 @@ The signing directory must remain outside the served tree, root-only. The initia
 - Adds `kylin-client-tunnel` and the OpenSSH runtime dependency. LAN-first route selection and WireGuard fallback use the same implementation on both distributions.
 - Private endpoints and SSH trust settings belong in local `tunnel.json`; no addresses, keys, tokens or records are bundled. Installing the package does not enable or reconfigure a tunnel automatically.
 - kh's existing user tunnel was migrated separately and authenticated service reachability verified over LAN. Live WireGuard fallback was unavailable during validation; fallback ordering and reconnect behavior passed automated tests.
+
+Revision 2 preserves the OpenSSH dependency from the concurrent LAN-first packaging update; revision 1 remains available as historical release evidence. Signed APT metadata was independently accepted by ThinkPad.
